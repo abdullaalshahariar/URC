@@ -1,2 +1,9 @@
-numpy
-opencv-contrib-python
+# --- Core numeric stack (ROS-compatible) ---
+numpy==1.26.4
+
+# --- ROS Python dependencies not always present in venv ---
+PyYAML>=6.0
+setuptools>=65.5.0
+
+# --- Optional but commonly needed ---
+packaging
