@@ -64,11 +64,17 @@ class ArucoDetector(Node):
         try:
             current_frame = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
         
-            detections, frame = self.detect_aruco(
+            detections, frame = self.detect_aruco_default(
                 current_frame,
                 self.camera_matrix,
                 self.dist_coeffs
             )
+
+            # eucledian distance
+            for det in detections:
+                pos = det["tvec"]
+                distance = np.linalg.norm(pos)
+                print(f"Marker ID {det['id']} distance: {distance:.3f} m")
 
             self.detections = detections #making result available
             cv2.imshow("Aruco Detection", current_frame)
@@ -81,7 +87,7 @@ class ArucoDetector(Node):
                     camera_matrix,
                     dist_coeffs,
                     aruco_dict_type=cv2.aruco.DICT_4X4_250,
-                    marker_length=0.05):
+                    marker_length=0.2):
         
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         aruco_dict = cv2.aruco.getPredefinedDictionary(aruco_dict_type)
@@ -125,6 +131,43 @@ class ArucoDetector(Node):
                     # Draw the axes so you can see it's working
                     cv2.drawFrameAxes(frame, camera_matrix, dist_coeffs, rvec, tvec, 0.05)
         
+        return detections, frame
+
+
+    def detect_aruco_default(self, frame, 
+                    camera_matrix,
+                    dist_coeffs,
+                    aruco_dict_type=cv2.aruco.DICT_4X4_250,
+                    marker_length=0.2):
+
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        aruco_dict = cv2.aruco.getPredefinedDictionary(aruco_dict_type)
+        parameters = cv2.aruco.DetectorParameters_create()
+
+        corners, ids, _ = cv2.aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
+        detections = []
+
+        if ids is not None:
+            cv2.aruco.drawDetectedMarkers(frame, corners, ids)
+
+            # Use OpenCV contrib function to estimate pose
+            rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(corners, marker_length, camera_matrix, dist_coeffs)
+
+            for i in range(len(ids)):
+                rvec = rvecs[i][0]
+                tvec = tvecs[i][0]
+                
+                # Draw axis on the marker
+                # cv2.aruco.drawAxis(frame, camera_matrix, dist_coeffs, rvec, tvec, marker_length * 0.5)
+                cv2.drawFrameAxes(frame, camera_matrix, dist_coeffs, rvecs[i], tvec, 0.05)
+                x, y, z = tvec.flatten()
+                detections.append({
+                    "id": int(ids[i][0]),
+                    "position": (z, -x, -y),
+                    "rvec": rvec,
+                    "tvec": tvec
+                })
+
         return detections, frame
 
 

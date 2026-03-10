@@ -1,0 +1,11 @@
+/**:
+  ros__parameters:
+    object_detection:
+      od_enabled: true
+      enable_tracking: true
+      detection_model: 'CUSTOM_YOLOLIKE_BOX_OBJECTS'
+      custom_onnx_file: "/home/ubuntu/URC/aruco_detection/yolov8s-worldv2.onnx"
+      custom_onnx_input_size: 640
+      custom_class_count: 7
+      max_range: 20.0
+      allow_reduced_precision_inference: true

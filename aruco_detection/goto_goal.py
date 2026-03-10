@@ -3,7 +3,7 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
-from nav2_msgs.action import NavigateToPose
+from nav2_msgs.action import NavigateToPose, Spin
 from geometry_msgs.msg import PoseStamped
 from rclpy.duration import Duration
 import math
@@ -19,6 +19,8 @@ class GoToGoalNode(Node):
         self.get_logger().info('Waiting for Nav2 action server...')
         self._action_client.wait_for_server()
         self.get_logger().info('Nav2 action server available!')
+
+        self._spin_client = ActionClient(self, Spin, 'spin')
     
     def send_goal(self, x: float, y: float, yaw: float = 0.0):
         goal_msg = NavigateToPose.Goal()
@@ -85,6 +87,31 @@ class GoToGoalNode(Node):
             self._goal_handle.cancel_goal_async()
         else:
             self.get_logger().info('No active goal to stop.')
+    
+
+    def rotate_360(self):
+        goal_msg = Spin.Goal()
+
+        goal_msg.target_yaw = 2 * math.pi
+        self.get_logger().info('Spinning 360 degrees')
+        self._spin_client.wait_for_server()
+
+        return self._spin_client.send_goal_async(goal_msg)
+    
+    def stop_rotation(self):
+        # 1. Check if the spin was even started
+        if hasattr(self, '_spin_future'):
+            # 2. Get the handle from the future
+            goal_handle = self._spin_future.result()
+            
+            # 3. If the handle exists, cancel it
+            if goal_handle is not None:
+                self.get_logger().info('Stopping the rotation...')
+                goal_handle.cancel_goal_async()
+            else:
+                self.get_logger().info('Rotation handle not ready yet.')
+        else:
+            self.get_logger().info('No rotation is currently active.')
 
 
 
