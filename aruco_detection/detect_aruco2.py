@@ -7,6 +7,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image, CameraInfo
 from cv_bridge import CvBridge
 from rclpy.qos import qos_profile_sensor_data
+from std_msgs.msg import String
 
 
 class ArucoDetector(Node):
@@ -44,6 +45,15 @@ class ArucoDetector(Node):
 
         #result
         self.detections = None
+
+        #publisher
+        self.publisher = self.create_publisher(
+            msg_type=String, 
+            topic="aruco_detections", 
+            qos_profile=5
+        )
+        #publishes at 1Hz
+        self.timer = self.create_timer(1, self.publisher_callback)
     
     def camera_info_callback(self, msg):
         try:
@@ -70,6 +80,12 @@ class ArucoDetector(Node):
                 self.dist_coeffs
             )
 
+            # detections, frame = self.detect_aruco(
+            #     current_frame,
+            #     self.camera_matrix,
+            #     self.dist_coeffs
+            # )
+
             # eucledian distance
             for det in detections:
                 pos = det["tvec"]
@@ -81,6 +97,13 @@ class ArucoDetector(Node):
             cv2.waitKey(1)
         except Exception as e:
             self.get_logger().error(f'Detection failed: {e}')
+
+    def publisher_callback(self):
+        if self.detections is not None and len(self.detections) > 0:
+            msg = String()
+            msg.data = str(self.detections)
+            self.publisher.publish(msg)
+            self.get_logger().info(f'Published detections: {msg.data}')
 
 
     def detect_aruco(self, frame, 
@@ -139,6 +162,9 @@ class ArucoDetector(Node):
                     dist_coeffs,
                     aruco_dict_type=cv2.aruco.DICT_4X4_250,
                     marker_length=0.2):
+        """This is the original detection method that uses the built-in OpenCV pose estimation.
+        It's more concise but can be unstable with certain OpenCV versions. If it doe not work,
+        switch to the detect_aruco() method which uses solvePnP directly."""
 
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         aruco_dict = cv2.aruco.getPredefinedDictionary(aruco_dict_type)
